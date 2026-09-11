@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Training Agent — Powered by IBM watsonx</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #23263a;
+      --border: #2e3148;
+      --accent: #4f8ef7;
+      --accent2: #7c5cd8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #e8eaf6;
+      --muted: #8b8fa8;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; font-size: 1.1rem; font-weight: 700; }
+    .logo-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 99px;
+      background: rgba(79,142,247,0.15); color: var(--accent);
+      border: 1px solid rgba(79,142,247,0.3); font-weight: 600;
+    }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 36px 24px 80px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; margin-bottom: 32px; background: var(--surface); padding: 4px; border-radius: var(--radius); }
+    .tab {
+      flex: 1; padding: 10px 8px; border: none; background: transparent;
+      color: var(--muted); border-radius: 9px; cursor: pointer;
+      font-size: 14px; font-weight: 500; transition: all .2s;
+    }
+    .tab.active { background: var(--surface2); color: var(--text); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px;
+      margin-bottom: 20px;
+    }
+    .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+
+    /* ── Form Elements ── */
+    label { font-size: 13px; color: var(--muted); font-weight: 500; display: block; margin-bottom: 6px; }
+    textarea, input, select {
+      width: 100%; padding: 12px 14px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px;
+      font-family: inherit; transition: border-color .2s; resize: vertical;
+    }
+    textarea:focus, input:focus, select:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px; border-radius: 8px; border: none;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all .2s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #3a7cf0; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-success { background: var(--success); color: #fff; }
+
+    /* ── Questions List ── */
+    .question-item {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; padding: 16px 20px; margin-bottom: 10px;
+      display: flex; align-items: flex-start; gap: 14px; cursor: pointer;
+      transition: border-color .2s;
+    }
+    .question-item:hover { border-color: var(--accent); }
+    .question-item.selected { border-color: var(--accent); background: rgba(79,142,247,0.07); }
+    .q-num {
+      min-width: 28px; height: 28px; border-radius: 6px;
+      background: rgba(79,142,247,0.15); color: var(--accent);
+      font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    }
+    .q-text { flex: 1; font-size: 14px; line-height: 1.5; }
+
+    /* ── Feedback ── */
+    .feedback-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; padding: 20px; margin-top: 16px;
+      white-space: pre-wrap; font-size: 14px; line-height: 1.7;
+    }
+    .score-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .score-circle {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: conic-gradient(var(--accent) 0%, var(--surface2) 0%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; border: 3px solid var(--border);
+    }
+
+    /* ── Study Plan ── */
+    .plan-output {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; padding: 20px; white-space: pre-wrap;
+      font-size: 14px; line-height: 1.8;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.2);
+      border-top-color: #fff; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Progress / Stats ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px; text-align: center;
+    }
+    .stat-num { font-size: 2rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Difficulty Chips ── */
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+      color: var(--muted); transition: all .15s;
+    }
+    .chip.active { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.1); }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* ── Chat (ReAct) ── */
+    .chat-window {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; height: 420px; overflow-y: auto;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .msg { max-width: 80%; display: flex; flex-direction: column; gap: 4px; }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.agent { align-self: flex-start; align-items: flex-start; }
+    .msg-bubble {
+      padding: 12px 16px; border-radius: 12px; font-size: 14px;
+      line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+    }
+    .msg.user  .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
+    .msg.agent .msg-bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+    .msg-label { font-size: 11px; color: var(--muted); font-weight: 600; padding: 0 4px; }
+
+    .chat-trace {
+      margin-top: 8px; padding: 10px 14px;
+      background: rgba(79,142,247,0.05); border: 1px solid rgba(79,142,247,0.15);
+      border-radius: 8px; font-size: 12px; color: var(--muted);
+    }
+    .chat-trace summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+    .trace-step {
+      margin-top: 6px; padding: 6px 10px;
+      background: var(--surface2); border-radius: 6px;
+      border-left: 3px solid var(--border);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .trace-step.think { border-color: var(--accent2); }
+    .trace-step.action { border-color: var(--accent); }
+    .trace-step.observation { border-color: var(--success); }
+
+    .chat-input-row {
+      display: flex; gap: 10px; margin-top: 12px;
+    }
+    .chat-input-row textarea {
+      flex: 1; resize: none; height: 46px; padding: 12px 14px;
+    }
+    .chat-input-row .btn { height: 46px; padding: 0 20px; }
+    .typing-dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted); margin: 0 2px;
+      animation: blink 1.2s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: .2s; }
+    .typing-dot:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 20px; font-size: 14px;
+      opacity: 0; pointer-events: none; transition: opacity .3s;
+      z-index: 999; max-width: 320px;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr; }
+      .tabs { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    Interview Training Agent
+    <span class="badge">IBM watsonx</span>
+  </div>
+  <span style="color:var(--muted);font-size:13px">Granite-4 · eu-de</span>
+</header>
+
+<div class="main">
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-questions">0</div>
+      <div class="stat-label">Questions Generated</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-answers">0</div>
+      <div class="stat-label">Answers Evaluated</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-score">—</div>
+      <div class="stat-label">Avg Score</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('generate')">📋 Generate Questions</button>
+    <button class="tab" onclick="switchTab('practice')">🎤 Practice & Evaluate</button>
+    <button class="tab" onclick="switchTab('plan')">📚 Study Plan</button>
+    <button class="tab" onclick="switchTab('chat')">💬 AI Chat (ReAct)</button>
+  </div>
+
+  <!-- ── Tab 1: Generate Questions ── -->
+  <div class="panel active" id="panel-generate">
+    <div class="card">
+      <div class="card-title">📋 Paste a Job Description</div>
+      <div class="form-group">
+        <label>Job Description</label>
+        <textarea id="jd-input" rows="6" placeholder="Paste the full job description here — role, responsibilities, required skills, etc."></textarea>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Number of Questions</label>
+          <select id="num-questions">
+            <option value="3">3 questions</option>
+            <option value="5" selected>5 questions</option>
+            <option value="8">8 questions</option>
+            <option value="10">10 questions</option>
+          </select>
+        </div>
+        <div>
+          <label>Difficulty</label>
+          <div class="chips" style="margin-top:8px">
+            <span class="chip" onclick="setDiff(this,'easy')">Easy</span>
+            <span class="chip active" onclick="setDiff(this,'medium')">Medium</span>
+            <span class="chip" onclick="setDiff(this,'hard')">Hard</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-generate" onclick="generateQuestions()">
+        <span>Generate Questions</span>
+      </button>
+    </div>
+
+    <div id="questions-output" style="display:none">
+      <div class="card">
+        <div class="card-title">Generated Interview Questions</div>
+        <div id="questions-list"></div>
+        <hr class="divider" />
+        <button class="btn btn-ghost" onclick="switchTab('practice'); loadQuestionsIntoPractice()">
+          Practice these questions →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 2: Practice & Evaluate ── -->
+  <div class="panel" id="panel-practice">
+    <div class="card">
+      <div class="card-title">🎤 Answer & Get AI Feedback</div>
+      <div class="form-group">
+        <label>Select a Question (or type your own)</label>
+        <div id="practice-questions-list"></div>
+        <textarea id="custom-question" rows="2" placeholder="Or type any interview question here…" style="margin-top:10px"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Your Answer</label>
+        <textarea id="answer-input" rows="5" placeholder="Type your answer as you would say it in a real interview…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Job Context (optional)</label>
+        <input type="text" id="job-context" placeholder="e.g. Senior Software Engineer at a fintech startup" />
+      </div>
+      <button class="btn btn-primary" id="btn-evaluate" onclick="evaluateAnswer()">
+        <span>Evaluate My Answer</span>
+      </button>
+    </div>
+    <div id="feedback-output" style="display:none">
+      <div class="card">
+        <div class="card-title">AI Feedback</div>
+        <div class="feedback-box" id="feedback-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 3: Study Plan ── -->
+  <div class="panel" id="panel-plan">
+    <div class="card">
+      <div class="card-title">📚 Personalised 2-Week Study Plan</div>
+      <div class="form-group">
+        <label>Job Description</label>
+        <textarea id="plan-jd" rows="5" placeholder="Paste the job description to tailor the study plan…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Weak Areas / Topics to Focus On</label>
+        <input type="text" id="weak-areas" placeholder="e.g. system design, behavioural questions, SQL, public speaking" />
+      </div>
+      <button class="btn btn-primary" id="btn-plan" onclick="generatePlan()">
+        <span>Generate Study Plan</span>
+      </button>
+    </div>
+    <div id="plan-output-card" style="display:none">
+      <div class="card">
+        <div class="card-title">Your Personalised Study Plan</div>
+        <div class="plan-output" id="plan-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 4: AI Chat (ReAct) ── -->
+  <div class="panel" id="panel-chat">
+    <div class="card">
+      <div class="card-title">💬 AI Chat — ReAct Loop</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+        Chat naturally. The agent <em>reasons</em>, picks the right tool, observes the result, and iterates — all transparently.
+      </p>
+      <div class="chat-window" id="chat-window">
+        <div class="msg agent">
+          <span class="msg-label">Agent</span>
+          <div class="msg-bubble">👋 Hi! I'm your Interview Training Agent. Share a job description or ask me anything — I'll reason through it step by step using the best tools available.</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" placeholder="e.g. Generate 5 questions for a Senior DevOps Engineer role at AWS…" onkeydown="chatKeydown(event)"></textarea>
+        <button class="btn btn-primary" id="btn-chat" onclick="sendChat()">Send</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="quickChat('Generate 5 medium interview questions for a Data Scientist role')">📋 Sample JD questions</button>
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="quickChat('Give me 8 behavioural interview tips for a Product Manager')">💡 PM tips</button>
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="quickChat('Create a 2-week study plan for a Software Engineer interview at a FAANG company')">📚 Study plan</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = "http://localhost:3001";
+  let generatedQuestions = [];
+  let selectedQuestion = "";
+  let difficulty = "medium";
+  let totalAnswers = 0;
+  let scoreSum = 0;
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  const TAB_NAMES   = ["generate","practice","plan","chat"];
+  const PANEL_NAMES = ["panel-generate","panel-practice","panel-plan","panel-chat"];
+  function switchTab(name) {
+    document.querySelectorAll(".tab").forEach((t, i) => {
+      t.classList.toggle("active", TAB_NAMES[i] === name);
+    });
+    document.querySelectorAll(".panel").forEach((p, i) => {
+      p.classList.toggle("active", PANEL_NAMES[i] === "panel-"+name);
+    });
+  }
+
+  // ── Difficulty chips ──────────────────────────────────────────────────────
+  function setDiff(el, val) {
+    document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    el.classList.add("active");
+    difficulty = val;
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function toast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 3000);
+  }
+
+  // ── Loading state ─────────────────────────────────────────────────────────
+  function setLoading(btnId, loading, label) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? `<div class="spinner"></div> Processing…`
+      : `<span>${label}</span>`;
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  function updateStats() {
+    document.getElementById("stat-questions").textContent = generatedQuestions.length;
+    document.getElementById("stat-answers").textContent = totalAnswers;
+    document.getElementById("stat-score").textContent =
+      totalAnswers ? (scoreSum / totalAnswers).toFixed(1) : "—";
+  }
+
+  // ── Generate Questions ────────────────────────────────────────────────────
+  async function generateQuestions() {
+    const jd = document.getElementById("jd-input").value.trim();
+    if (!jd) { toast("Please paste a job description first."); return; }
+    setLoading("btn-generate", true, "Generate Questions");
+    try {
+      const resp = await fetch(`${API}/api/generate-questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobDescription: jd,
+          numQuestions: parseInt(document.getElementById("num-questions").value),
+          difficulty,
+        }),
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      generatedQuestions = data.questions;
+      renderQuestionsList();
+      document.getElementById("questions-output").style.display = "block";
+      updateStats();
+      toast("Questions generated successfully!");
+    } catch (e) {
+      toast("Error: " + e.message);
+    } finally {
+      setLoading("btn-generate", false, "Generate Questions");
+    }
+  }
+
+  function renderQuestionsList() {
+    const el = document.getElementById("questions-list");
+    el.innerHTML = generatedQuestions.map((q, i) => `
+      <div class="question-item" onclick="selectQuestion(${i}, this)">
+        <div class="q-num">${i+1}</div>
+        <div class="q-text">${escHtml(q)}</div>
+      </div>`).join("");
+  }
+
+  function selectQuestion(i, el) {
+    document.querySelectorAll("#questions-list .question-item").forEach(e => e.classList.remove("selected"));
+    el.classList.add("selected");
+    selectedQuestion = generatedQuestions[i];
+  }
+
+  // ── Load questions into Practice tab ──────────────────────────────────────
+  function loadQuestionsIntoPractice() {
+    const el = document.getElementById("practice-questions-list");
+    if (!generatedQuestions.length) { el.innerHTML = ""; return; }
+    el.innerHTML = generatedQuestions.map((q, i) => `
+      <div class="question-item" onclick="pickPracticeQ(${i}, this)">
+        <div class="q-num">${i+1}</div>
+        <div class="q-text">${escHtml(q)}</div>
+      </div>`).join("");
+  }
+
+  function pickPracticeQ(i, el) {
+    document.querySelectorAll("#practice-questions-list .question-item").forEach(e => e.classList.remove("selected"));
+    el.classList.add("selected");
+    document.getElementById("custom-question").value = generatedQuestions[i];
+  }
+
+  // ── Evaluate Answer ───────────────────────────────────────────────────────
+  async function evaluateAnswer() {
+    const question = document.getElementById("custom-question").value.trim();
+    const answer = document.getElementById("answer-input").value.trim();
+    const jobDescription = document.getElementById("job-context").value.trim();
+    if (!question) { toast("Please enter or select a question."); return; }
+    if (!answer) { toast("Please type your answer first."); return; }
+    setLoading("btn-evaluate", true, "Evaluate My Answer");
+    try {
+      const resp = await fetch(`${API}/api/evaluate-answer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, answer, jobDescription }),
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      document.getElementById("feedback-text").textContent = data.feedback;
+      document.getElementById("feedback-output").style.display = "block";
+      totalAnswers++;
+      const scoreMatch = data.feedback.match(/(\d+)\s*\/\s*10/);
+      if (scoreMatch) scoreSum += parseInt(scoreMatch[1]);
+      updateStats();
+      toast("Feedback ready!");
+    } catch (e) {
+      toast("Error: " + e.message);
+    } finally {
+      setLoading("btn-evaluate", false, "Evaluate My Answer");
+    }
+  }
+
+  // ── Study Plan ────────────────────────────────────────────────────────────
+  async function generatePlan() {
+    const jobDescription = document.getElementById("plan-jd").value.trim();
+    const weakAreas = document.getElementById("weak-areas").value.trim();
+    if (!jobDescription) { toast("Please paste a job description."); return; }
+    setLoading("btn-plan", true, "Generate Study Plan");
+    try {
+      const resp = await fetch(`${API}/api/study-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobDescription, weakAreas }),
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      document.getElementById("plan-text").textContent = data.plan;
+      document.getElementById("plan-output-card").style.display = "block";
+      toast("Study plan ready!");
+    } catch (e) {
+      toast("Error: " + e.message);
+    } finally {
+      setLoading("btn-plan", false, "Generate Study Plan");
+    }
+  }
+
+  // ── Utils ─────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  // ── Chat (ReAct) ──────────────────────────────────────────────────────────
+  let chatHistory = [];
+
+  function chatKeydown(e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  }
+
+  function quickChat(msg) {
+    document.getElementById("chat-input").value = msg;
+    sendChat();
+  }
+
+  function appendMsg(role, text, trace) {
+    const win = document.getElementById("chat-window");
+
+    const wrap = document.createElement("div");
+    wrap.className = `msg ${role}`;
+
+    const label = document.createElement("span");
+    label.className = "msg-label";
+    label.textContent = role === "user" ? "You" : "Agent";
+
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble";
+    bubble.textContent = text;
+
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+
+    // Append ReAct trace (collapsible) for agent messages
+    if (role === "agent" && trace && trace.length) {
+      const details = document.createElement("details");
+      details.className = "chat-trace";
+      const summary = document.createElement("summary");
+      summary.textContent = `🔍 ReAct trace (${trace.length} steps)`;
+      details.appendChild(summary);
+      trace.forEach(step => {
+        const div = document.createElement("div");
+        div.className = `trace-step ${step.type}`;
+        if (step.type === "think")       div.textContent = step.text;
+        else if (step.type === "action") div.textContent = `▶ ${step.tool}(${JSON.stringify(step.args)})`;
+        else                             div.textContent = `● ${step.tool}: ${(step.result||"").slice(0,300)}${(step.result||"").length>300?"…":""}`;
+        details.appendChild(div);
+      });
+      wrap.appendChild(details);
+    }
+
+    win.appendChild(wrap);
+    win.scrollTop = win.scrollHeight;
+    return wrap;
+  }
+
+  function appendTyping() {
+    const win = document.getElementById("chat-window");
+    const wrap = document.createElement("div");
+    wrap.className = "msg agent";
+    wrap.id = "typing-indicator";
+    wrap.innerHTML = `<span class="msg-label">Agent</span><div class="msg-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+    win.appendChild(wrap);
+    win.scrollTop = win.scrollHeight;
+  }
+
+  function removeTyping() {
+    const el = document.getElementById("typing-indicator");
+    if (el) el.remove();
+  }
+
+  async function sendChat() {
+    const input = document.getElementById("chat-input");
+    const message = input.value.trim();
+    if (!message) return;
+    input.value = "";
+
+    appendMsg("user", message);
+    chatHistory.push({ role: "user", content: message });
+
+    const btn = document.getElementById("btn-chat");
+    btn.disabled = true;
+    appendTyping();
+
+    try {
+      const resp = await fetch(`${API}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, history: chatHistory.slice(-10) }),
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      removeTyping();
+      appendMsg("agent", data.answer, data.trace);
+      chatHistory.push({ role: "assistant", content: data.answer });
+    } catch (e) {
+      removeTyping();
+      appendMsg("agent", "⚠ Error: " + e.message);
+    } finally {
+      btn.disabled = false;
+      input.focus();
+    }
+  }
+</script>
+</body>
+</html>
